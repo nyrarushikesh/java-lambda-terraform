@@ -66,3 +66,12 @@ jobs:
       - name: Terraform Apply
         working-directory: infra/lambda
         run: terraform apply -auto-approve
+
+      # 🔟 Get Function URL
+      - name: Get Lambda Function URL
+        working-directory: infra/lambda
+        run: |
+          echo "🚀 Lambda Function URL:"
+          terraform output -raw function_url
+          echo ""
+          echo "✅ Access your Lambda at the URL above to see 'Hello World from Java Lambda!'"
