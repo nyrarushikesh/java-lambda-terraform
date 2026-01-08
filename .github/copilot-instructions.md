@@ -1,9 +1,7 @@
 # Java Lambda Terraform Project
 
 ## Architecture Overview
-This is a Java-based AWS Lambda function with Terraform infrastructure. The project uses a **modular Terraform structure** where reusable Lambda infrastructure lives in `module/lambda/` and environment-specific deployments are in `infra/lambda/`.
-
-**Key Pattern**: The Terraform module (`module/lambda/`) is incomplete - it references `var.function_name` and `var.jar_path` without declaring them in `variables.tf`. These variables are **passed directly from the calling module** in `infra/lambda/main.tf`.
+This is a Java-based AWS Lambda function with Terraform infrastructure and public Function URL access. The project uses a **modular Terraform structure** where reusable Lambda infrastructure lives in `module/lambda/` and environment-specific deployments are in `infra/lambda/`.
 
 ## Project Structure
 ```
@@ -31,45 +29,77 @@ terraform apply
 
 **Important**: The JAR path in `infra/lambda/main.tf` uses a relative path (`../../app/hello-world/target/hello-lambda-1.0.jar`) from the infra directory.
 
+### Getting the Function URL
+After deployment, get the public URL:
+```bash
+cd infra/lambda
+terraform output function_url
+```
+Or via AWS CLI:
+```bash
+aws lambda get-function-url-config --function-name hello-java --query 'FunctionUrl' --output text
+```
+
 ### CI/CD Pipeline
 The project uses GitHub Actions (`.github/workflows/deploy-lambda.yml`) which:
 1. Builds Java Lambda with Maven
 2. Runs Terraform from `infra/lambda/`
-3. Auto-applies on push to `main`
+3. Recreates Function URL with correct permissions (AWS Oct 2025+ requirement)
+4. Displays the Function URL in workflow logs
+5. Auto-applies on push to `main`
 
 Required secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
 
 ## Terraform Patterns
 
 ### Module Usage Pattern
-The `module/lambda/` module is intentionally minimal - it doesn't declare all variables it uses:
-- `function_name` and `jar_path` are passed from caller but NOT in module's `variables.tf`
-- Unused variables (`region`, `envname`, `bucket`) ARE declared but never referenced
+The `module/lambda/` only declares variables that are actually used:
+- `function_name` - Lambda function name
+- `jar_path` - Path to compiled JAR file
 
-**When modifying**: Add new Lambda variables directly to `infra/lambda/main.tf` module block, not necessarily to `module/lambda/variables.tf`.
+Variables are passed from `infra/lambda/main.tf` to the module.
 
 ### State Management
 - **Backend**: S3 remote state (`s3-backend-remote1`) configured in `backend.tf`
-- **Critical**: Backend region MUST match bucket region (currently `us-east-1`)
+- **Region**: `us-east-1` (backend region must match bucket region)
 
 ## Java Lambda Specifics
 
-### Handler Configuration Mismatch
-**Known Issue**: The handler in `module/lambda/main.tf` is:
-```terraform
-handler = "com.example.Handler::handleRequest"
+### Handler Configuration
+- **Class**: `com.example.HelloHandler`
+- **Handler**: `com.example.HelloHandler::handleRequest`
+- **Response Format**: Returns `Map<String, Object>` with `statusCode`, `body`, and `headers` for Function URL compatibility
+
+### Function URL Response Format
+Lambda Function URLs require structured responses:
+```java
+{
+  "statusCode": 200,
+  "body": "Hello World from Java Lambda!",
+  "headers": {"Content-Type": "text/plain"}
+}
 ```
-But the actual Java class is `com.example.HelloHandler`, not `Handler`. This will cause deployment failures.
 
 ### Dependencies
-Uses AWS Lambda Java Core SDK v1.2.2 with Maven Shade plugin for fat JAR packaging.
+- AWS Lambda Java Core SDK v1.2.2
+- Maven Shade plugin for fat JAR packaging
+- Java 17 compiler configuration in pom.xml
 
 ### Runtime
 Java 17 (`java17` runtime in Terraform, Java 17 in GitHub Actions)
 
+## AWS Function URL Requirements (Oct 2025+)
+
+**Critical**: Function URLs now require **both** permissions:
+1. `lambda:InvokeFunctionUrl` - Allow Function URL invocation
+2. `lambda:InvokeFunction` - Allow function execution
+
+Both permissions are configured in `module/lambda/main.tf` and enforced in the GitHub Actions workflow.
+
 ## When Adding New Lambda Functions
 1. Create new directory under `app/`
-2. Add Maven module with `maven-shade-plugin`
-3. Create new root module under `infra/` (copy `infra/lambda/` as template)
-4. Update JAR path and function name in the new infra module's `main.tf`
-5. Consider fixing the handler class name mismatch pattern
+2. Add Maven module with `maven-shade-plugin` and Java 17 properties
+3. Implement handler returning `Map<String, Object>` with statusCode/body/headers
+4. Create new root module under `infra/` (copy `infra/lambda/` as template)
+5. Update JAR path and function name in the new infra module's `main.tf`
+6. Ensure both Function URL permissions are added for public access
