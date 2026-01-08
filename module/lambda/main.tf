@@ -19,7 +19,7 @@ resource "aws_iam_role_policy_attachment" "basic" {
 resource "aws_lambda_function" "this" {
   function_name = var.function_name
   role          = aws_iam_role.lambda_role.arn
-  handler       = "com.example.Handler::handleRequest"
+  handler       = "com.example.HelloHandler::handleRequest"
   runtime       = "java17"
 
   filename         = var.jar_path
