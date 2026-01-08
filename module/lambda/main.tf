@@ -46,5 +46,9 @@ resource "aws_lambda_permission" "allow_function_url" {
   function_name = aws_lambda_function.this.function_name
   principal     = "*"
   
+  qualifier             = null
+  source_arn            = null
+  function_url_auth_type = "NONE"
+  
   depends_on = [aws_lambda_function_url.this]
 }
