@@ -41,9 +41,10 @@ resource "aws_lambda_function_url" "this" {
 }
 
 resource "aws_lambda_permission" "allow_function_url" {
-  statement_id           = "FunctionURLAllowPublicAccess"
-  action                 = "lambda:InvokeFunctionUrl"
-  function_name          = aws_lambda_function.this.function_name
-  principal              = "*"
-  function_url_auth_type = "NONE"
+  statement_id  = "AllowPublicAccess"
+  action        = "lambda:InvokeFunctionUrl"
+  function_name = aws_lambda_function.this.function_name
+  principal     = "*"
+  
+  depends_on = [aws_lambda_function_url.this]
 }
