@@ -49,9 +49,8 @@ resource "aws_lambda_permission" "allow_function_url" {
 }
 
 resource "aws_lambda_permission" "allow_function_invoke" {
-  statement_id           = "FunctionURLAllowInvoke"
-  action                 = "lambda:InvokeFunction"
-  function_name          = aws_lambda_function.this.function_name
-  principal              = "*"
-  function_url_auth_type = "NONE"
+  statement_id  = "FunctionURLAllowInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.this.function_name
+  principal     = "*"
 }

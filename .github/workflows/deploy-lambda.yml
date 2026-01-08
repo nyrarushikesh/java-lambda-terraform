@@ -96,8 +96,7 @@ jobs:
             --function-name hello-java \
             --statement-id FunctionURLAllowInvoke \
             --action lambda:InvokeFunction \
-            --principal "*" \
-            --function-url-auth-type NONE
+            --principal "*"
           
           echo "✅ Function URL configured successfully with both required permissions!"
 
