@@ -67,7 +67,18 @@ jobs:
         working-directory: infra/lambda
         run: terraform apply -auto-approve
 
-      # 🔟 Get Function URL
+      # 🔟 Ensure Lambda Function URL Permission
+      - name: Add Function URL Permission
+        run: |
+          aws lambda remove-permission --function-name hello-java --statement-id FunctionURLAllowPublicAccess 2>/dev/null || true
+          aws lambda add-permission \
+            --function-name hello-java \
+            --statement-id FunctionURLAllowPublicAccess \
+            --action lambda:InvokeFunctionUrl \
+            --principal "*" \
+            --function-url-auth-type NONE
+
+      # 1️⃣1️⃣ Get Function URL
       - name: Get Lambda Function URL
         working-directory: infra/lambda
         run: |
