@@ -75,6 +75,7 @@ jobs:
           
           echo "Removing old permissions..."
           aws lambda remove-permission --function-name hello-java --statement-id FunctionURLAllowPublicAccess 2>/dev/null || true
+          aws lambda remove-permission --function-name hello-java --statement-id FunctionURLAllowInvoke 2>/dev/null || true
           aws lambda remove-permission --function-name hello-java --statement-id AllowPublicAccess 2>/dev/null || true
           
           echo "Creating Function URL..."
@@ -83,7 +84,7 @@ jobs:
             --auth-type NONE \
             --cors '{"AllowOrigins":["*"],"AllowMethods":["*"],"AllowHeaders":["*"],"MaxAge":86400}'
           
-          echo "Adding permission..."
+          echo "Adding permissions (AWS requires BOTH after Oct 2025)..."
           aws lambda add-permission \
             --function-name hello-java \
             --statement-id FunctionURLAllowPublicAccess \
@@ -91,7 +92,14 @@ jobs:
             --principal "*" \
             --function-url-auth-type NONE
           
-          echo "✅ Function URL configured successfully!"
+          aws lambda add-permission \
+            --function-name hello-java \
+            --statement-id FunctionURLAllowInvoke \
+            --action lambda:InvokeFunction \
+            --principal "*" \
+            --function-url-auth-type NONE
+          
+          echo "✅ Function URL configured successfully with both required permissions!"
 
       # 1️⃣1️⃣ Get Function URL
       - name: Get Lambda Function URL
